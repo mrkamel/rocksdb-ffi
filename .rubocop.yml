@@ -24,9 +24,6 @@ Style/HashTransformKeys:
 Style/HashEachMethods:
   Enabled: true
 
-Style/FrozenStringLiteralComment:
-  Enabled: false
-
 Lint/RedundantRequireStatement:
   Enabled: false
 

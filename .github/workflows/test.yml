@@ -1,0 +1,24 @@
+on: push
+name: test
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    name: Ruby ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ruby:3.0-alpine3.16
+          - ruby:3.1-alpine3.16
+          - ruby:3.2-alpine3.17
+    steps:
+    - uses: actions/checkout@v3
+    - name: install dependencies
+      run: apk add tar git build-base rocksdb-dev
+    - name: bundle
+      run: bundle
+    - name: rspec
+      run: bundle exec rspec
+    - name: rubocop
+      run: bundle exec rubocop

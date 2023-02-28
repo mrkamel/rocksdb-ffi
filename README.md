@@ -41,7 +41,7 @@ rocksdb.close
 rocksdb.open("/path/to/other/db")
 ```
 
-That's it for now!
+The library is tested against ruby 3.0/3.1/3.2 and rocksdb 7.2. That's it for now!
 
 ## Development
 

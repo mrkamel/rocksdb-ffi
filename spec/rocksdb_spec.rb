@@ -9,6 +9,17 @@ RSpec.describe RocksDB do
     expect(described_class::VERSION).not_to be nil
   end
 
+  describe ".open" do
+    it "opens the database" do
+      db = described_class.open("/tmp/rocksdb")
+      db.put("key", "value")
+
+      expect(db.get("key")).to eq("value")
+    ensure
+      db.close
+    end
+  end
+
   describe "#initialize" do
     it "opens the database" do
       db = described_class.new("/tmp/rocksdb")

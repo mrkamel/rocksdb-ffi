@@ -36,6 +36,10 @@ class RocksDB
 
   ENCODING = "UTF-8"
 
+  def self.open(path)
+    new(path)
+  end
+
   def initialize(path)
     @create_options = FFI::AutoPointer.new(Lib.rocksdb_options_create, Lib.method(:rocksdb_options_destroy))
     Lib.rocksdb_options_set_create_if_missing(@create_options, 1)

@@ -45,11 +45,6 @@ class RocksDB
 
     @closed = true
 
-    # Pre-define and re-use those pointers for better performance
-    @error = FFI::MemoryPointer.new(:pointer, 1)
-    @key_length = FFI::MemoryPointer.new(:size_t, 1)
-    @value_length = FFI::MemoryPointer.new(:size_t, 1)
-
     self.open(path)
   end
 
@@ -60,35 +55,39 @@ class RocksDB
   def open(path)
     close
 
-    @error = FFI::MemoryPointer.new(:pointer, 1)
-    @db = FFI::AutoPointer.new(Lib.rocksdb_open(@create_options, path, @error), method(:auto_close))
-    check_error(@error)
+    error = FFI::MemoryPointer.new(:pointer, 1)
+    @db = FFI::AutoPointer.new(Lib.rocksdb_open(@create_options, path, error), method(:auto_close))
+    check_error(error)
     @closed = false
   end
 
   def put(key, value)
     raise(ClosedError, "Database is closed") if @closed
 
-    Lib.rocksdb_put(@db, @write_options, key, key.bytesize, value, value.bytesize, @error)
-    check_error(@error)
+    error = FFI::MemoryPointer.new(:pointer, 1)
+    Lib.rocksdb_put(@db, @write_options, key, key.bytesize, value, value.bytesize, error)
+    check_error(error)
   end
 
   def get(key)
     raise(ClosedError, "Database is closed") if @closed
 
-    res = Lib.rocksdb_get(@db, @read_options, key, key.bytesize, @key_length, @error)
-    check_error(@error)
+    length = FFI::MemoryPointer.new(:size_t, 1)
+    error = FFI::MemoryPointer.new(:pointer, 1)
+    res = Lib.rocksdb_get(@db, @read_options, key, key.bytesize, length, error)
+    check_error(error)
 
     return if res.null?
 
-    read_string(res, @key_length)
+    read_string(res, length)
   end
 
   def delete(key)
     raise(ClosedError, "Database is closed") if @closed
 
-    Lib.rocksdb_delete(@db, @write_options, key, key.bytesize, @error)
-    check_error(@error)
+    error = FFI::MemoryPointer.new(:pointer, 1)
+    Lib.rocksdb_delete(@db, @write_options, key, key.bytesize, error)
+    check_error(error)
   end
 
   def close
@@ -104,8 +103,11 @@ class RocksDB
     return enum_for(__method__) unless block_given?
 
     iterate do |iterator|
-      key = read_string(Lib.rocksdb_iter_key(iterator, @key_length), @key_length)
-      value = read_string(Lib.rocksdb_iter_value(iterator, @value_length), @value_length)
+      key_length = FFI::MemoryPointer.new(:size_t, 1)
+      key = read_string(Lib.rocksdb_iter_key(iterator, key_length), key_length)
+
+      value_length = FFI::MemoryPointer.new(:size_t, 1)
+      value = read_string(Lib.rocksdb_iter_value(iterator, value_length), value_length)
 
       yield(key, value)
     end
@@ -119,7 +121,8 @@ class RocksDB
     return enum_for(__method__) unless block_given?
 
     iterate do |iterator|
-      key = read_string(Lib.rocksdb_iter_key(iterator, @key_length), @key_length)
+      key_length = FFI::MemoryPointer.new(:size_t, 1)
+      key = read_string(Lib.rocksdb_iter_key(iterator, key_length), key_length)
 
       yield(key)
     end

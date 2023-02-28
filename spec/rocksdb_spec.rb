@@ -9,17 +9,6 @@ RSpec.describe RocksDB do
     expect(described_class::VERSION).not_to be nil
   end
 
-  describe ".open" do
-    it "opens the database" do
-      db = described_class.open("/tmp/rocksdb")
-      db.put("key", "value")
-
-      expect(db.get("key")).to eq("value")
-    ensure
-      db.close
-    end
-  end
-
   describe "#initialize" do
     it "opens the database" do
       db = described_class.new("/tmp/rocksdb")
@@ -36,6 +25,16 @@ RSpec.describe RocksDB do
       expect { described_class.new("/tmp/rocksdb") }.to raise_error(described_class::Error, /No locks available/)
     ensure
       db.close
+    end
+  end
+
+  describe ".open" do
+    it "delegates to new" do
+      allow(described_class).to receive(:new)
+
+      described_class.open("/tmp/rocksdb")
+
+      expect(described_class).to have_received(:new).with("/tmp/rocksdb")
     end
   end
 
@@ -164,6 +163,20 @@ RSpec.describe RocksDB do
       db.close
 
       expect { db.each }.to raise_error(described_class::ClosedError)
+    ensure
+      db.close
+    end
+  end
+
+  describe "#each_pair" do
+    it "delegates to each" do
+      db = described_class.new("/tmp/rocksdb")
+
+      allow(db).to receive(:each)
+
+      db.each_pair.to_a
+
+      expect(db).to have_received(:each)
     ensure
       db.close
     end

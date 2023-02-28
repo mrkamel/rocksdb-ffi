@@ -22,13 +22,13 @@ $ gem install rocksdb-ffi
 rocksdb-ffi exposes the basic functionality of rocksdb.
 
 ```ruby
-rocksdb = RocksDB.new("/path/to/db")
+rocksdb = RocksDB.new("/path/to/db") # or RocksDB.open("/path/to/db")
 
 rocksdb.put("key", "value")
 
 rocksdb.delete("key")
 
-rocksdb.each do |key, value|
+rocksdb.each do |key, value| # or rocksdb.each_pair do ...
   # ...
 end
 

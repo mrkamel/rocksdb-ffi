@@ -36,10 +36,6 @@ class RocksDB
 
   ENCODING = "UTF-8"
 
-  def self.open(path)
-    new(path)
-  end
-
   def initialize(path)
     @create_options = FFI::AutoPointer.new(Lib.rocksdb_options_create, Lib.method(:rocksdb_options_destroy))
     Lib.rocksdb_options_set_create_if_missing(@create_options, 1)
@@ -50,6 +46,10 @@ class RocksDB
     @closed = true
 
     self.open(path)
+  end
+
+  def self.open(path)
+    new(path)
   end
 
   def open(path)
@@ -112,6 +112,8 @@ class RocksDB
       yield(key, value)
     end
   end
+
+  alias_method :each_pair, :each
 
   def each_key
     raise(ClosedError, "Database is closed") if @closed

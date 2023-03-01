@@ -43,6 +43,11 @@ rocksdb.open("/path/to/other/db")
 
 The library is tested against ruby 3.0/3.1/3.2 and rocksdb 7.2. That's it for now!
 
+## Thread-safety
+
+Please check out the RocksDB FAQ regarding thread-safety as the same applies to
+rocksdb-ffi: https://github.com/aayushKumarJarvis/rocks-wiki/blob/master/RocksDB-FAQ.md
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run

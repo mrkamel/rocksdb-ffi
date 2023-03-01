@@ -16,7 +16,7 @@ RSpec.describe RocksDB do
 
       expect(db.get("key")).to eq("value")
     ensure
-      db.close
+      db&.close
     end
 
     it "raises when the database is already opened" do
@@ -24,7 +24,26 @@ RSpec.describe RocksDB do
 
       expect { described_class.new("/tmp/rocksdb") }.to raise_error(described_class::Error, /No locks available/)
     ensure
+      db&.close
+    end
+  end
+
+  describe ".auto_close" do
+    it "closes the database" do
+      # Can't be tested properly
+    end
+
+    it "does not close an already closed database" do
+      db = described_class.new("/tmp/rocksdb")
       db.close
+
+      allow(described_class::Lib).to receive(:rocksdb_close).and_call_original
+
+      db = nil # rubocop:disable Lint/UselessAssignment
+
+      GC.start
+
+      expect(described_class::Lib).not_to have_received(:rocksdb_close)
     end
   end
 
@@ -45,7 +64,33 @@ RSpec.describe RocksDB do
 
       expect { db.put("key", "value") }.to raise_error(described_class::ClosedError)
     ensure
+      db&.close
+    end
+  end
+
+  describe "#flush" do
+    it "flushes the database" do
+      db = described_class.new("/tmp/rocksdb")
+      db.put("key", "value")
+      db.flush
+
+      FileUtils.cp_r("/tmp/rocksdb", "/tmp/rocksdb2")
+
+      db2 = described_class.new("/tmp/rocksdb2")
+
+      expect(db2.get("key")).to eq("value")
+    ensure
+      db&.close
+      db2&.close
+
+      FileUtils.rm_rf("/tmp/rocksdb2")
+    end
+
+    it "raises when the database is closed" do
+      db = described_class.new("/tmp/rocksdb")
       db.close
+
+      expect { db.flush }.to raise_error(described_class::ClosedError)
     end
   end
 
@@ -67,7 +112,10 @@ RSpec.describe RocksDB do
 
       expect(db.get("key")).to eq("value")
     ensure
-      db.close
+      db&.close
+
+      FileUtils.rm_rf("/tmp/rocksdb1")
+      FileUtils.rm_rf("/tmp/rocksdb2")
     end
   end
 
@@ -82,7 +130,7 @@ RSpec.describe RocksDB do
       expect(db.get("key2")).to eq("value2")
       expect(db.get("key3")).to eq("value3")
     ensure
-      db.close
+      db&.close
     end
 
     it "raises when the database is closed" do
@@ -90,8 +138,6 @@ RSpec.describe RocksDB do
       db.close
 
       expect { db.put("key", "value") }.to raise_error(described_class::ClosedError)
-    ensure
-      db.close
     end
   end
 
@@ -106,7 +152,7 @@ RSpec.describe RocksDB do
       expect(db.get("key2")).to eq("value2")
       expect(db.get("key3")).to eq("value3")
     ensure
-      db.close
+      db&.close
     end
 
     it "returns nil when the key does not exist" do
@@ -115,7 +161,7 @@ RSpec.describe RocksDB do
 
       expect(db.get("unknown")).to be_nil
     ensure
-      db.close
+      db&.close
     end
 
     it "raises when the database is closed" do
@@ -123,8 +169,6 @@ RSpec.describe RocksDB do
       db.close
 
       expect { db.get("key") }.to raise_error(described_class::ClosedError)
-    ensure
-      db.close
     end
   end
 
@@ -143,7 +187,7 @@ RSpec.describe RocksDB do
 
       expect(pairs).to eq([["key1", "value1"], ["key2", "value2"], ["key3", "value3"]])
     ensure
-      db.close
+      db&.close
     end
 
     it "returns an enumerator when no block is given" do
@@ -155,7 +199,7 @@ RSpec.describe RocksDB do
       expect(db.each).to be_instance_of(Enumerator)
       expect(db.each.to_a).to eq([["key1", "value1"], ["key2", "value2"], ["key3", "value3"]])
     ensure
-      db.close
+      db&.close
     end
 
     it "raises when the database is closed" do
@@ -163,8 +207,6 @@ RSpec.describe RocksDB do
       db.close
 
       expect { db.each }.to raise_error(described_class::ClosedError)
-    ensure
-      db.close
     end
   end
 
@@ -178,7 +220,7 @@ RSpec.describe RocksDB do
 
       expect(db).to have_received(:each)
     ensure
-      db.close
+      db&.close
     end
   end
 
@@ -197,7 +239,7 @@ RSpec.describe RocksDB do
 
       expect(keys).to eq(["key1", "key2", "key3"])
     ensure
-      db.close
+      db&.close
     end
 
     it "returns an enumerator when no block is given" do
@@ -209,7 +251,7 @@ RSpec.describe RocksDB do
       expect(db.each_key).to be_instance_of(Enumerator)
       expect(db.each_key.to_a).to eq(["key1", "key2", "key3"])
     ensure
-      db.close
+      db&.close
     end
 
     it "raises when the database is closed" do
@@ -217,8 +259,6 @@ RSpec.describe RocksDB do
       db.close
 
       expect { db.each_key }.to raise_error(described_class::ClosedError)
-    ensure
-      db.close
     end
   end
 end

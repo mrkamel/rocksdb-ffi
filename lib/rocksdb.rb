@@ -28,24 +28,48 @@ class RocksDB
     attach_function :rocksdb_iter_key, [:pointer, :pointer], :pointer
     attach_function :rocksdb_iter_value, [:pointer, :pointer], :pointer
     attach_function :rocksdb_iter_destroy, [:pointer], :void
+    attach_function :rocksdb_flush, [:pointer, :pointer, :pointer], :void
+    attach_function :rocksdb_flushoptions_create, [], :pointer
+    attach_function :rocksdb_flushoptions_destroy, [:pointer], :void
     attach_function :rocksdb_free, [:pointer], :void
+
+    def self.auto_close(closed_state)
+      proc do |db|
+        Lib.rocksdb_close(db) unless closed_state.value
+      end
+    end
   end
 
   class Error < StandardError; end
   class ClosedError < Error; end
 
+  class ClosedState
+    attr_accessor :value
+
+    def initialize(value)
+      @value = value
+    end
+  end
+
   ENCODING = "UTF-8"
 
   def initialize(path)
+    # For performance reasons, we create and re-use these options
+
     @create_options = FFI::AutoPointer.new(Lib.rocksdb_options_create, Lib.method(:rocksdb_options_destroy))
     Lib.rocksdb_options_set_create_if_missing(@create_options, 1)
 
     @read_options = FFI::AutoPointer.new(Lib.rocksdb_readoptions_create, Lib.method(:rocksdb_readoptions_destroy))
     @write_options = FFI::AutoPointer.new(Lib.rocksdb_writeoptions_create, Lib.method(:rocksdb_writeoptions_destroy))
+    @flush_options = FFI::AutoPointer.new(Lib.rocksdb_flushoptions_create, Lib.method(:rocksdb_flushoptions_destroy))
 
+    # To automatically close the database during cleanup we need an object, but
+    # for fast checking we use the literal
+
+    @closed_state = ClosedState.new(true)
     @closed = true
 
-    self.open(path)
+    open(path) # rubocop:disable Security/Open
   end
 
   def self.open(path)
@@ -56,9 +80,19 @@ class RocksDB
     close
 
     error = FFI::MemoryPointer.new(:pointer, 1)
-    @db = FFI::AutoPointer.new(Lib.rocksdb_open(@create_options, path, error), method(:auto_close))
+    @db = FFI::AutoPointer.new(Lib.rocksdb_open(@create_options, path, error), Lib.auto_close(@closed_state))
     check_error(error)
+
+    @closed_state.value = false
     @closed = false
+  end
+
+  def flush
+    raise(ClosedError, "Database is closed") if @closed
+
+    error = FFI::MemoryPointer.new(:pointer, 1)
+    Lib.rocksdb_flush(@db, @flush_options, error)
+    check_error(error)
   end
 
   def put(key, value)
@@ -93,8 +127,10 @@ class RocksDB
   def close
     return if @closed
 
-    @closed = true
     Lib.rocksdb_close(@db)
+
+    @closed_state.value = true
+    @closed = true
   end
 
   def each
@@ -144,10 +180,6 @@ class RocksDB
     ensure
       Lib.rocksdb_iter_destroy(iterator)
     end
-  end
-
-  def auto_close(*args)
-    close
   end
 
   def check_error(error)

@@ -133,6 +133,20 @@ RSpec.describe RocksDB do
       db&.close
     end
 
+    it "handles utf-8 correctly" do
+      db = described_class.new("/tmp/rocksdb")
+      db.put("ÄÖÜßäöü", "value")
+      db.put("key", "ÄÖÜßäöü")
+
+      expect(db.get("ÄÖÜßäöü")).to eq("value")
+      expect(db.get("ÄÖÜßäöü").encoding).to eq(Encoding::UTF_8)
+
+      expect(db.get("key")).to eq("ÄÖÜßäöü")
+      expect(db.get("key").encoding).to eq(Encoding::UTF_8)
+    ensure
+      db&.close
+    end
+
     it "raises when the database is closed" do
       db = described_class.new("/tmp/rocksdb")
       db.close

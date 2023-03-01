@@ -36,12 +36,21 @@ rocksdb.each_key do |key|
   # ...
 end
 
+rocksdb.flush
+
 rocksdb.close
 
 rocksdb.open("/path/to/other/db")
 ```
 
-The library is tested against ruby 3.0/3.1/3.2 and rocksdb 7.2. That's it for now!
+The library is tested against:
+
+* ruby 2.7 with rocksdb 7.2
+* ruby 3.0 with rocksdb 7.2
+* ruby 3.1 with rocksdb 7.2
+* ruby 3.1 with rocksdb 7.7
+* ruby 3.2 with rocksdb 7.2
+* ruby 3.2 with rocksdb 7.7
 
 ## Thread-safety
 

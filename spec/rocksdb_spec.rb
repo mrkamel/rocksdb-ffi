@@ -223,7 +223,6 @@ RSpec.describe RocksDB do
       expect { db.each }.to raise_error(described_class::ClosedError)
     end
   end
-
   describe "#each_pair" do
     it "delegates to each" do
       db = described_class.new("/tmp/rocksdb")
@@ -273,6 +272,48 @@ RSpec.describe RocksDB do
       db.close
 
       expect { db.each_key }.to raise_error(described_class::ClosedError)
+    end
+  end
+
+  describe "#each_prefix" do
+    it "iterates the key/value pairs matching the prefix" do
+      db = described_class.new("/tmp/rocksdb")
+      db.put("prefix1:key1", "value1")
+      db.put("prefix1:key2", "value2")
+      db.put("prefix2:key3", "value3")
+      db.put("prefix1:key4", "value4")
+      db.put("prefix2:key5", "value5")
+
+      pairs = []
+
+      db.each_prefix("prefix1") do |key, value|
+        pairs << [key, value]
+      end
+
+      expect(pairs).to eq([["prefix1:key1", "value1"], ["prefix1:key2", "value2"], ["prefix1:key4", "value4"]])
+    ensure
+      db&.close
+    end
+
+    it "returns an enumerator when no block is given" do
+      db = described_class.new("/tmp/rocksdb")
+      db.put("prefix1:key1", "value1")
+      db.put("prefix1:key2", "value2")
+      db.put("prefix2:key3", "value3")
+      db.put("prefix1:key4", "value4")
+      db.put("prefix2:key5", "value5")
+
+      expect(db.each_prefix("prefix1").to_a).to eq([["prefix1:key1", "value1"], ["prefix1:key2", "value2"], ["prefix1:key4", "value4"]])
+      expect(db.each_prefix("prefix2").to_a).to eq([["prefix2:key3", "value3"], ["prefix2:key5", "value5"]])
+    ensure
+      db&.close
+    end
+
+    it "raises when the database is closed" do
+      db = described_class.new("/tmp/rocksdb")
+      db.close
+
+      expect { db.each_prefix("prefix") }.to raise_error(described_class::ClosedError)
     end
   end
 end

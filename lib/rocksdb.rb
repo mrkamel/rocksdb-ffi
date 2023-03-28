@@ -24,6 +24,7 @@ class RocksDB
     attach_function :rocksdb_create_iterator, [:pointer, :pointer], :pointer
     attach_function :rocksdb_iter_valid, [:pointer], :uchar
     attach_function :rocksdb_iter_seek_to_first, [:pointer], :void
+    attach_function :rocksdb_iter_seek, [:pointer, :string, :size_t], :void
     attach_function :rocksdb_iter_next, [:pointer], :void
     attach_function :rocksdb_iter_key, [:pointer, :pointer], :pointer
     attach_function :rocksdb_iter_value, [:pointer, :pointer], :pointer
@@ -164,6 +165,19 @@ class RocksDB
     end
   end
 
+  def each_prefix(prefix)
+    raise(ClosedError, "Database is closed") if @closed
+
+    return enum_for(__method__, prefix) unless block_given?
+
+    iterate_prefix(prefix) do |key, iterator|
+      value_length = FFI::MemoryPointer.new(:size_t, 1)
+      value = read_string(Lib.rocksdb_iter_value(iterator, value_length), value_length)
+
+      yield(key, value)
+    end
+  end
+
   private
 
   def iterate
@@ -174,6 +188,27 @@ class RocksDB
 
       while Lib.rocksdb_iter_valid(iterator) != 0
         yield(iterator)
+
+        Lib.rocksdb_iter_next(iterator)
+      end
+    ensure
+      Lib.rocksdb_iter_destroy(iterator)
+    end
+  end
+
+  def iterate_prefix(prefix)
+    iterator = Lib.rocksdb_create_iterator(@db, @read_options)
+
+    begin
+      Lib.rocksdb_iter_seek(iterator, prefix, prefix.bytesize)
+
+      while Lib.rocksdb_iter_valid(iterator) != 0
+        key_length = FFI::MemoryPointer.new(:size_t, 1)
+        key = read_string(Lib.rocksdb_iter_key(iterator, key_length), key_length)
+
+        return unless key.start_with?(prefix)
+
+        yield(key, iterator)
 
         Lib.rocksdb_iter_next(iterator)
       end

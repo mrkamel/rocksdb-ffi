@@ -36,6 +36,10 @@ rocksdb.each_key do |key|
   # ...
 end
 
+rocksdb.each_prefix("prefix") do |key, value|
+  # ...
+end
+
 rocksdb.flush
 
 rocksdb.close

@@ -55,6 +55,7 @@ The library is tested against:
 * ruby 3.1 with rocksdb 7.7
 * ruby 3.2 with rocksdb 7.2
 * ruby 3.2 with rocksdb 7.7
+* ruby 3.2 with rocksdb 7.9
 
 ## Thread-safety
 

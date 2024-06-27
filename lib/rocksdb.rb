@@ -114,7 +114,11 @@ class RocksDB
 
     return if res.null?
 
-    read_string(res, length)
+    value = read_string(res, length)
+
+    Lib.rocksdb_free(res)
+
+    value
   end
 
   def delete(key)
